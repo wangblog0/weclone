@@ -123,6 +123,7 @@ modelscope download --model Qwen/Qwen2.5-7B-Instruct --local_dir ./models/Qwen2.
 
 ## 数据预处理
 - 首先根据需要修改配置文件中的`language`、`platform`、`include_type`。
+- 如果使用 `chat` 模式，默认会把“对方消息”写成 `user`、把“你的回复”写成 `assistant`。如果你想反过来，改 `make_dataset_args.chat_args.assistant_role_mode` 为 `other`，此时会把“你的提问”作为 `user`、把“对方回复”作为 `assistant`。
 - 项目默认通过Microsoft Presidio去除了数据中的`电话号码、电子邮件地址、信用卡号码（12-19位数字）、IP地址、地理位置名称、国际银行账户号码、加密货币钱包地址、年龄信息、通用身份证号码`,但是不能保证100%过滤识别。
 - 所以在`settings.jsonc`中提供了一个禁用词词库`blocked_words`，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
 > [!IMPORTANT]

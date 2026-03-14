@@ -17,9 +17,6 @@
     "make_dataset_args": {
         //数据处理配置
         "platform": "chat", //chat,telegram
-        "chat_args": {
-            "assistant_role_mode": "self" // chat模式下，self=学习你自己的回复；other=学习对方的回复
-        },
         "language": "zh", // 聊天常用语言: zh(中文) 或 en(英文)
         "telegram_args": {
             "my_id": "user1234567890"

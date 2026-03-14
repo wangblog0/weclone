@@ -124,6 +124,7 @@ Please use [Telegram Desktop](https://desktop.telegram.org/) to export chat reco
 
 ## Data Preprocessing
 - First, modify the `language`, `platform`, and `include_type` in the configuration file according to your needs.
+- In `chat` mode, the default behavior maps the other person's message to `user` and your reply to `assistant`. If you want to reverse that, set `make_dataset_args.chat_args.assistant_role_mode` to `other`, which will instead use your prompt as `user` and the other person's reply as `assistant`.
 - If you use telegram, you need to modify the `telegram_args.my_id` in the configuration file to your own telegram user ID.
 - By default, the project uses Microsoft Presidio to remove `phone numbers, email addresses, credit card numbers, IP addresses, geographic location names, international bank account numbers, cryptocurrency wallet addresses, age information, and generic ID numbers` from the data, but it cannot guarantee 100% identification.
 - Therefore, a blocklist `blocked_words` is provided in `settings.jsonc`, allowing users to manually add words or phrases they want to filter (the entire sentence containing blocked words will be removed by default).

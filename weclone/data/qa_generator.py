@@ -24,7 +24,7 @@ from weclone.data.models import (
 from weclone.data.strategies import TimeWindowStrategy
 from weclone.data.utils import ImageToTextProcessor, check_image_file_exists
 from weclone.utils.config import load_config
-from weclone.utils.config_models import DataModality, LanguageType, PlatformType, WCMakeDatasetConfig
+from weclone.utils.config_models import ChatRoleMode, DataModality, LanguageType, PlatformType, WCMakeDatasetConfig
 from weclone.utils.log import logger
 
 
@@ -34,6 +34,7 @@ class DataProcessor:
         self.csv_folder = "./dataset/csv"
         self.system_prompt = self.config.default_system
         self.enable_clean = self.config.clean_dataset.enable_clean
+        self.assistant_sender = self._get_assistant_sender()
 
         # message type
         self.QaPair = QaPair
@@ -116,6 +117,12 @@ class DataProcessor:
         self.c = self.config
 
         self.relations = {}
+
+    def _get_assistant_sender(self) -> int:
+        """Return which side should be treated as assistant during dataset construction."""
+        if self.config.platform == PlatformType.CHAT:
+            return 0 if self.config.chat_args.assistant_role_mode == ChatRoleMode.OTHER else 1
+        return 1
 
     def main(self):
         self.pre_parse_chat_dataset()
@@ -243,6 +250,7 @@ class DataProcessor:
         last_message = None
         current_instruction = None
         qa_id_counter = 0
+        instruction_sender = 1 - self.assistant_sender
 
         conversation_messages: List[Message] = []
         conversation_images: List[str] = []
@@ -349,7 +357,7 @@ class DataProcessor:
                 continue
 
             if current_state == WAITING_INSTRUCTION:
-                if msg.is_sender == 0:  # Received message from other party
+                if msg.is_sender == instruction_sender:
                     if last_message and not self.qa_match_strategy.is_same_conversation([last_message], msg):
                         # If not the same conversation and there is a previous message, save the previous conversation
                         if conversation_messages:
@@ -366,9 +374,10 @@ class DataProcessor:
                     # Regardless of whether a new conversation has just been started, this 'msg' now becomes the current instruction.
                     current_instruction = msg
                     last_message = msg
-                    conversation_talker = msg.talker
+                    if msg.is_sender == 0:
+                        conversation_talker = msg.talker
                     current_state = WAITING_RESPONSE
-                elif msg.is_sender == 1:  # Own message as first message
+                elif msg.is_sender == self.assistant_sender:
                     if last_message and not self.qa_match_strategy.is_same_conversation([last_message], msg):
                         if conversation_messages:
                             qa_id_counter = _save_current_qa_pair(
@@ -383,10 +392,12 @@ class DataProcessor:
 
                     conversation_messages.append(Message(role="user", content="<begin_chat>"))
                     conversation_messages.append(Message(role="assistant", content=msg.msg))
+                    if msg.is_sender == 0:
+                        conversation_talker = msg.talker
                     last_message = msg
 
             elif current_state == WAITING_RESPONSE:
-                if msg.is_sender == 0:  # Received message from other party
+                if msg.is_sender == instruction_sender:
                     if last_message and not self.qa_match_strategy.is_same_conversation([last_message], msg):
                         if conversation_messages:
                             qa_id_counter = _save_current_qa_pair(
@@ -400,15 +411,18 @@ class DataProcessor:
                             conversation_images = []
                     current_instruction = msg
                     last_message = msg
-                    conversation_talker = msg.talker
+                    if msg.is_sender == 0:
+                        conversation_talker = msg.talker
                     # State remains unchanged
-                else:  # Own message - use strategy to determine if it belongs to the same conversation
+                elif msg.is_sender == self.assistant_sender:
                     if last_message and self.qa_match_strategy.is_same_conversation([last_message], msg):
                         if current_instruction is None:
                             raise ValueError("current_instruction should not be None when creating a QA pair")
 
                         conversation_messages.append(Message(role="user", content=current_instruction.msg))
                         conversation_messages.append(Message(role="assistant", content=msg.msg))
+                        if msg.is_sender == 0:
+                            conversation_talker = msg.talker
                         if hasattr(current_instruction, "src") and current_instruction.src:
                             if isinstance(current_instruction.src, list):
                                 valid_images = [img_src for img_src in current_instruction.src if img_src]

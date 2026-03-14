@@ -39,6 +39,13 @@ class PlatformType(StrEnum):
     TELEGRAM = "telegram"
 
 
+class ChatRoleMode(StrEnum):
+    """Assistant role source in chat mode"""
+
+    SELF = "self"
+    OTHER = "other"
+
+
 class LanguageType(StrEnum):
     """Data language"""
 
@@ -125,10 +132,19 @@ class TelegramArgs(BaseModel):
     my_id: str = Field(default="user1234567890", description="Your own telegram id")
 
 
+class ChatArgs(BaseModel):
+    model_config = {"extra": "forbid"}
+    assistant_role_mode: ChatRoleMode = Field(
+        default=ChatRoleMode.SELF,
+        description="In chat mode, choose whether self or the other party should be used as assistant targets.",
+    )
+
+
 class MakeDatasetArgs(BaseConfigModel):
     model_config = {"extra": "forbid"}
 
     platform: PlatformType = Field(..., description="Data source platform")
+    chat_args: ChatArgs = Field(ChatArgs())
     telegram_args: Optional[TelegramArgs] = None
     language: LanguageType = Field(LanguageType.ZH, description="Common language used in chat")
     include_type: List[DataModality] = Field([DataModality.TEXT], description="Types of data to include")
